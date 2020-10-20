@@ -5,6 +5,8 @@ import {
     WebSocketGateway,
     WebSocketServer,
     WsResponse,
+    OnGatewayConnection,
+    OnGatewayDisconnect
 } from '@nestjs/websockets';
 import Websocket from 'ws';
 import { Server } from 'ws'
@@ -51,13 +53,7 @@ export class WSGateway {
             })
         })
     }
-
-    @SubscribeMessage('connected')
-    connect(
-        @ConnectedSocket() socket: Websocket
-    ){
-        console.log('New connection')
-    }
+ 
 
     @SubscribeMessage('auth')
     auth(

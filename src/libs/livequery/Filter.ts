@@ -20,29 +20,60 @@ export type QueryFilter = {
     value: number | string | boolean | null
 }
 
-export const QueryFilterParser = (query: any) => Object
-    .entries(query)
-    .filter(item => item[0][0] != '_')
-    .map(([key, filterString]) => {
+type Request = {
+    headers: { [key: string]: string }
+    query: { [key: string]: string },
+    body: { [key: string]: string },
+}
 
-        const conditions = typeof filterString == 'string' ? [filterString] : filterString as any[]
-        const filters = conditions.map(c => {
-            const condition = c.includes('|') ? c : `eq|${c}`
-            const [expression, value] = condition.trim().split('|') as [string, string]
-            if (!FilterExpressionsList.includes(expression)) throw 'INVAILD_FUNCTION'
-            if (value?.includes('"')) return { key, expression, value: JSON.parse(value) }
-            return { key, expression, value: !isNaN(value as any) ? Number(value) : value }
+export type LiveQuery = {
+    use_data: boolean,
+    live_session: string | null,
+    limit: number,
+    filters: QueryFilter[],
+    order_by: string,
+    cursor: string | null,
+    sort: 'asc' | 'desc'
+}
 
+export const QueryFilterParser = (request: Request) => {
+
+    const use_data = request.headers.useData == 'false' ? false : true
+    const live_session = request.headers.useLive || null
+    const limit = isNaN(request.query._limit as any) ? 10 : Math.max(Number(request.query._limit), 50)
+    const cursor = request.query._cursor || request.headers.cursor || null
+    const order_by = request.query._order_by || null
+
+
+    const filters = Object
+        .entries(request.query)
+        .filter(item => item[0][0] != '_')
+        .map(([key, filterString]) => {
+
+            const conditions = typeof filterString == 'string' ? [filterString] : filterString as any[]
+            const filters = conditions.map(c => {
+                const condition = c.includes('|') ? c : `eq|${c}`
+                const [expression, value] = condition.trim().split('|') as [string, string]
+                if (!FilterExpressionsList.includes(expression)) throw 'INVAILD_FUNCTION'
+                if (value?.includes('"')) return { key, expression, value: JSON.parse(value) }
+                return { key, expression, value: !isNaN(value as any) ? Number(value) : value }
+
+            })
+            return filters
         })
-        return filters
-    })
-    .flat(1) as QueryFilter[]
+        .flat(1) as QueryFilter[]
 
+    return {
+        use_data,
+        live_session,
+        limit,
+        filters,
+        order_by,
+        cursor
+    } as LiveQuery
 
-
+}
 
 export const isFilterMatch = <T>(data: T, filters: QueryFilter[]) => filters.every(
     ({ expression, key, value }) => FilterExpressions[expression](data[key], value as any)
 )
-
- 
