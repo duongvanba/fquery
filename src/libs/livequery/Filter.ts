@@ -38,8 +38,8 @@ export type LiveQuery = {
 
 export const QueryFilterParser = (request: Request) => {
 
-    const use_data = request.headers.useData == 'false' ? false : true
-    const live_session = request.headers.useLive || null
+    const use_data = request.headers.usedata == 'false' ? false : true
+    const live_session = request.headers.uselive || null
     const limit = isNaN(request.query._limit as any) ? 10 : Math.max(Number(request.query._limit), 50)
     const cursor = request.query._cursor || request.headers.cursor || null
     const order_by = request.query._order_by || null

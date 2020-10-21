@@ -1,8 +1,7 @@
-import { Controller, Param, Post, Body, Get, Query, Req, Redirect, Res } from '@nestjs/common'
+import { Controller, Param, Post, Body, Get, Query, Req } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './decorators/User';
 import { QueryFilterParser, isFilterMatch } from './libs/livequery/Filter';
-import { Response } from 'express'
 
 import {
     WebSocketServer,
@@ -11,12 +10,9 @@ import { Server } from 'ws';
 import { WSGateway } from './ws';
 import { Request } from 'express';
 import { TypeormQueryMapper } from './libs/livequery/TypeormQueryMapper';
-import { Any } from 'typeorm';
-import { UserPaymentController } from './users.payments'
 
-
-@Controller('users')
-export class UserController {
+@Controller('@users/:id/payments')
+export class UserPaymentController {
 
     @WebSocketServer()
     server: Server
@@ -24,20 +20,16 @@ export class UserController {
 
     private users = [{ id: '#1', name: 'ba' }]
 
-    constructor(
-        private ws: WSGateway 
-    ) { }
+    constructor(private ws: WSGateway) { }
 
     @Get()
     async list(
         @Req() request: Request
     ) {
+        console.log('ahihi')
         const query = QueryFilterParser(request)
-        console.log({query})
 
-        // validate
-
-        const data = this.users.filter(x => isFilterMatch(x, query.filters))
+        const data = query.use_data ? TypeormQueryMapper(null, query) : null
 
 
         const realtime_subscription = query.live_session && this.ws.subscribe('users', query.live_session, query.filters)
@@ -48,12 +40,12 @@ export class UserController {
         }
     }
 
-    @Post()
+    @Post( )
     async create(
         @Body() data: any
     ) {
-        // return { success: true, from: 'UserController' }
+        return {success:true,from:'UserPaymentController'}
         await this.ws.broadcast('users', [{ type: 'added', data }])
     }
- 
+
 }
