@@ -3,16 +3,14 @@ import {
     MessageBody,
     SubscribeMessage,
     WebSocketGateway,
-    WebSocketServer,
-    WsResponse,
-    OnGatewayConnection,
-    OnGatewayDisconnect
+    WebSocketServer, 
 } from '@nestjs/websockets';
 import Websocket from 'ws';
 import { Server } from 'ws'
 import { v4 } from 'uuid'
-import { AsyncForEach } from './helpers/Loop';
-import { QueryFilter, isFilterMatch } from './libs/livequery/Filter';
+import { AsyncForEach } from './helpers/Loop'; 
+import { QueryFilter } from './libs/livequery/types';
+import { isFilterMatch } from './libs/livequery/FilterExpressions';
 
 
 type CollectionID = string

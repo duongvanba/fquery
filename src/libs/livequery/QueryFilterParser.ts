@@ -1,42 +1,23 @@
-
-export const FilterExpressions = ({
-    eq: (a, b) => a == b,
-    ne: (a, b) => a != b,
-    lt: (a, b) => a < b,
-    lte: (a, b) => a <= b,
-    gt: (a, b) => a > b,
-    gte: (a, b) => a >= b,
-    in: (a, b: any[]) => b.includes(a),
-    nin: (a, b: any[]) => !b.includes(a),
-    array_contains: (a: any[], b: any[]) => a.some(i => b.includes(i))
-})
-
-
-export const FilterExpressionsList = Object.keys(FilterExpressions)
-
-export type QueryFilter = {
-    key: string,
-    expression: keyof typeof FilterExpressions,
-    value: number | string | boolean | null
-}
+import { FilterExpressionsList } from "./FilterExpressions"
+import { LiveQuery, QueryFilter } from "./types"
 
 type Request = {
     headers: { [key: string]: string }
     query: { [key: string]: string },
     body: { [key: string]: string },
+    path: string
 }
 
-export type LiveQuery = {
-    use_data: boolean,
-    live_session: string | null,
-    limit: number,
-    filters: QueryFilter[],
-    order_by: string,
-    cursor: string | null,
-    sort: 'asc' | 'desc'
-}
 
 export const QueryFilterParser = (request: Request) => {
+ 
+    const refs = request.path.split('/').slice(1).map(r => {
+        const [collection, id] = r.split('@')
+        return { collection, id }
+    })
+
+    if (refs.some((current, index) => refs[index + 1] && !current.id && refs[index + 1].collection)) throw 'Require ID to access subcollection'
+
 
     const use_data = request.headers.usedata == 'false' ? false : true
     const live_session = request.headers.uselive || null
@@ -69,11 +50,9 @@ export const QueryFilterParser = (request: Request) => {
         limit,
         filters,
         order_by,
-        cursor
+        cursor,
+        refs
     } as LiveQuery
 
 }
 
-export const isFilterMatch = <T>(data: T, filters: QueryFilter[]) => filters.every(
-    ({ expression, key, value }) => FilterExpressions[expression](data[key], value as any)
-)
