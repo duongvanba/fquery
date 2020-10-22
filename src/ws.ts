@@ -3,13 +3,13 @@ import {
     MessageBody,
     SubscribeMessage,
     WebSocketGateway,
-    WebSocketServer, 
+    WebSocketServer,
 } from '@nestjs/websockets';
 import Websocket from 'ws';
 import { Server } from 'ws'
 import { v4 } from 'uuid'
-import { AsyncForEach } from './helpers/Loop'; 
-import { QueryFilter } from './libs/livequery/types';
+import { AsyncForEach } from './helpers/Loop';
+import { LiveQuery, QueryFilter } from './libs/livequery/types';
 import { isFilterMatch } from './libs/livequery/FilterExpressions';
 
 
@@ -27,14 +27,15 @@ export class WSGateway {
     private refs = new Map<CollectionID, Map<ConnectionID, Map<SubscriptionID, QueryFilter[]>>>()
     private connections = new Map<string, { socket: Websocket, refs: Set<string> }>()
 
-    subscribe(ref: string, connection_id: string, filters: QueryFilter[]) {
-        if (!this.connections.has(connection_id)) throw 'CONNECTION_NOT_FOUND'
+    subscribe(query: LiveQuery) {
 
-        if (!this.refs.has(ref)) this.refs.set(ref, new Map())
-        if (!this.refs.get(ref).has(connection_id)) this.refs.get(ref).set(connection_id, new Map())
+        if (!this.connections.has(query.live_session)) throw 'CONNECTION_NOT_FOUND'
+
+        if (!this.refs.has(query.path)) this.refs.set(query.path, new Map())
+        if (!this.refs.get(query.path).has(query.live_session)) this.refs.get(query.path).set(query.live_session, new Map())
         const id = v4()
-        this.refs.get(ref).get(connection_id).set(id, filters)
-        console.log(`Active realtime subscription from #${connection_id} at <${ref}> with filters`, { filters })
+        this.refs.get(query.path).get(query.live_session).set(id, query.filters)
+        console.log(`Active realtime subscription from #${query.live_session} at <${query.path}> with filters`, { filters: query.filters })
         return id
     }
 
@@ -45,13 +46,13 @@ export class WSGateway {
         await AsyncForEach([...subscriptions.entries()], async ([connection_id, listeners]) => {
             await AsyncForEach([...listeners.entries()], async ([id, filters]) => {
 
-                const matched_changes = changes.filter(c => isFilterMatch(c.data, filters)) 
+                const matched_changes = changes.filter(c => isFilterMatch(c.data, filters))
                 if (matched_changes.length == 0) return
                 await this.connections.get(connection_id)?.socket.send(JSON.stringify({ ref, changes: matched_changes }))
             })
         })
     }
- 
+
 
     @SubscribeMessage('auth')
     auth(

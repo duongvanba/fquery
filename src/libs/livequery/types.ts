@@ -16,6 +16,8 @@ export type LiveQuery = {
     order_by: string
     cursor: string,
     sort: 'asc' | 'desc',
-    refs: Array<{ collection: string, id: string }>
+    refs: Array<{ collection: string, id: string }>,
+    action:string
+    path:string
 }
 

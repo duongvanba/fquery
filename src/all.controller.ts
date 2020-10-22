@@ -1,15 +1,15 @@
 import { Controller, Param, Post, Body, Get, Query, Req } from '@nestjs/common'
- 
+
 import { WSGateway } from './ws';
 import { Request } from 'express';
 import { TypeormQueryMapper } from './libs/livequery/TypeormQueryMapper';
-import { QueryFilterParser } from './libs/livequery/QueryFilterParser';
-import { MongoDBQueryMapper } from './libs/livequery/MongoDBQueryMapper';
-import { Db  } from 'mongodb';
+import { QueryFilterParser, QueryRefParser } from './libs/livequery/QueryFilterParser';
+import { MongoDBQueryMapper, MongoDBUpdateMapper } from './libs/livequery/MongoDBQueryMapper';
+import { Db } from 'mongodb';
 
 
 
-@Controller('*')
+@Controller('@db/*')
 export class RealtimeGenericController {
 
     constructor(
@@ -21,40 +21,22 @@ export class RealtimeGenericController {
     async catchALl(
         @Req() request: Request,
     ) {
-        return await MongoDBQueryMapper(this.db, QueryFilterParser(request))
-    } 
+        const query = QueryFilterParser(request)
+        const data = query.use_data ? await MongoDBQueryMapper(this.db, query) : { items: [] }
+        const subscription = query.live_session ? this.ws.subscribe(query) : null
+        return {
+            ...data,
+            path: query.path,
+            subscription
+        }
+    }
 
 
     @Post()
     async list(
         @Req() request: Request,
-        @Param('id') id: string
+        @Body() data: any
     ) {
-        console.log(request.path)
-
-
-        // return { collection: `users@${id}/payments`, id, method: 'get' }
-        // const query = QueryFilterParser(request)
-
-        // const data = query.use_data ? TypeormQueryMapper(null, query) : null
-
-
-        // const realtime_subscription = query.live_session && this.ws.subscribe('users', query.live_session, query.filters)
-
-        // return {
-        //     data,
-        //     live: realtime_subscription ? { session: realtime_subscription } : null
-        // }
+        return await MongoDBUpdateMapper(this.db, QueryRefParser(request).refs, data) 
     }
-
-    // @Post()
-    async create(
-        @Body() data: any,
-        @Param('id') id: string
-    ) {
-        // return { collection: `users@${id}/payments`, id, method: 'post' }
-        // return { success: true, from: 'UserPaymentController' }
-        // await this.ws.broadcast('users', [{ type: 'added', data }])
-    }
-
 }

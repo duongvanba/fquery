@@ -1,4 +1,5 @@
 import { Db, ObjectId } from 'mongodb'
+import { isOmittedExpression } from 'typescript'
 import { LiveQuery } from './types'
 
 
@@ -86,3 +87,64 @@ export async function MongoDBQueryMapper<T>(db: Db, query: LiveQuery, hide_field
     }
 
 }
+
+function omit(data: any, keys: string[]) {
+    let newObj = {}
+    for (const key in data) if (!keys.includes(key)) newObj[key] = data[key]
+    return newObj
+}
+
+export async function MongoDBUpdateMapper(db: Db, refs: Array<{ collection: string, id: string }>, data: any) {
+
+    const _id = refs[refs.length - 1].id || new ObjectId()
+    const insertData = omit(data, ['id', '_id'])
+
+    // Create new 
+    if (refs.length == 1) {
+        refs[0].id && await db.collection(refs[0].collection).updateOne({ _id }, { $set: insertData })
+        !refs[0].id && await db.collection(refs[0].collection).insertOne({ ...insertData, _id })
+        return _id
+    }
+
+
+
+    const condit = {
+        _id: new ObjectId(refs[0].id),
+        [`@@${refs[1].collection}`]: {
+            $elemMatch: {
+                _id: refs[1].id,
+                '@@tags._id':refs[2].id
+            }
+        }
+        
+        
+        // refs.slice(1)map(( { collection, id }) => {
+        //     return {
+        //         [`@@${collection}`]: {
+        //             $elemMatch: {
+        //                 _id: new ObjectId(id),
+        //                 ...p
+        //             }
+        //         }
+        //     }
+        // } )
+    }
+
+    const payload = {
+        [refs[refs.length - 1].id ? '$set' : '$push']: {
+            [refs.slice(1).map(({ collection }, index) => `@@${collection}.$[key${index}]`).join('.')]: insertData
+        }
+    }
+
+    const filter = {
+        arrayFilters: refs.slice(1).map(({ collection, id }, index) => ({
+            [`key${index}._id`]: id
+        }))
+    }
+
+    console.log(JSON.stringify({ condit, payload, filter }, null, 2))
+
+    await db.collection(refs[0].collection).updateOne(condit, payload, filter)
+
+    return _id
+} 
