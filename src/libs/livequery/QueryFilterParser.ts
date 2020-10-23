@@ -1,3 +1,4 @@
+import { Query } from "@nestjs/common"
 import { FilterExpressionsList } from "./FilterExpressions"
 import { LiveQuery, QueryFilter } from "./types"
 
@@ -67,7 +68,9 @@ export const QueryFilterParser = (request: Request) => {
         cursor,
         refs,
         action,
-        path
+        path,
+        sort: request.query.sort == 'desc' ? 'desc' : 'asc',
+        target_id: refs[refs.length - 1].id
     } as LiveQuery
 
 }

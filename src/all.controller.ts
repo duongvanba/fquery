@@ -1,10 +1,10 @@
-import { Controller, Param, Post, Body, Get, Query, Req } from '@nestjs/common'
+import { Controller, Param, Post, Body, Get, Query, Req, Delete } from '@nestjs/common'
 
 import { WSGateway } from './ws';
 import { Request } from 'express';
 import { TypeormQueryMapper } from './libs/livequery/TypeormQueryMapper';
 import { QueryFilterParser, QueryRefParser } from './libs/livequery/QueryFilterParser';
-import { MongoDBQueryMapper, MongoDBUpdateMapper } from './libs/livequery/MongoDBQueryMapper';
+import { MongoDBDeleteMapper, MongoDBQueryMapper, MongoDBUpdateMapper } from './libs/livequery/MongoDBQueryMapper';
 import { Db } from 'mongodb';
 
 
@@ -24,6 +24,9 @@ export class RealtimeGenericController {
         const query = QueryFilterParser(request)
         const data = query.use_data ? await MongoDBQueryMapper(this.db, query) : { items: [] }
         const subscription = query.live_session ? this.ws.subscribe(query) : null
+
+        if (query.target_id) return data.items[0]
+
         return {
             ...data,
             path: query.path,
@@ -37,6 +40,17 @@ export class RealtimeGenericController {
         @Req() request: Request,
         @Body() data: any
     ) {
-        return await MongoDBUpdateMapper(this.db, QueryRefParser(request).refs, data) 
+        return await MongoDBUpdateMapper(
+            this.db,
+            QueryRefParser(request).refs,
+            data
+        )
+    }
+
+    @Delete()
+    async delete(
+        @Req() request: Request 
+    ) {
+        return await MongoDBDeleteMapper(this.db, QueryRefParser(request).refs)
     }
 }
