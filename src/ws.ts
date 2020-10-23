@@ -39,7 +39,7 @@ export class WSGateway {
         return id
     }
 
-    async broadcast<T extends { id: string }>(ref: string, changes: Array<{ data: T, type: 'added' | 'modified' | 'deleted' }>) {
+    async broadcast<T extends { id: string }>(ref: string, changes: Array<{ data: T, type: 'modified' | 'deleted' }>) {
         const subscriptions = this.refs.get(ref)
         console.log({ subscriptions })
         if (!subscriptions) return

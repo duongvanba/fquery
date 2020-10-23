@@ -6,6 +6,7 @@ import { TypeormQueryMapper } from './libs/livequery/TypeormQueryMapper';
 import { QueryFilterParser, QueryRefParser } from './libs/livequery/QueryFilterParser';
 import { MongoDBDeleteMapper, MongoDBQueryMapper, MongoDBUpdateMapper } from './libs/livequery/MongoDBQueryMapper';
 import { Db } from 'mongodb';
+import { readFileSync } from 'fs';
 
 
 
@@ -38,19 +39,26 @@ export class RealtimeGenericController {
     @Post()
     async list(
         @Req() request: Request,
-        @Body() data: any
+        @Body() payload: any
     ) {
-        return await MongoDBUpdateMapper(
+        const { refs, path } = QueryRefParser(request)
+        const data = await MongoDBUpdateMapper(
             this.db,
-            QueryRefParser(request).refs,
-            data
+            refs,
+            payload
         )
+
+        return this.ws.broadcast(path, [{ type: 'modified', data }])
     }
 
     @Delete()
     async delete(
-        @Req() request: Request 
+        @Req() request: Request
     ) {
-        return await MongoDBDeleteMapper(this.db, QueryRefParser(request).refs)
+        const { refs, path } = QueryRefParser(request)
+        const id = refs[refs.length - 1].id
+        await MongoDBDeleteMapper(this.db, QueryRefParser(request).refs)
+        this.ws.broadcast(path, [{ type: 'modified', data: { id } }])
+        return
     }
 }
